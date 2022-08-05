@@ -1,8 +1,6 @@
 local S = minetest.get_translator(minetest.get_current_modname())
 
 
-local S = minetest.get_translator(minetest.get_current_modname())
-
 local boat_visual_size = {x = 1, y = 1, z = 1}
 local paddling_speed = 22
 local boat_y_offset = 0.35
@@ -105,8 +103,12 @@ local function detach_object(obj, change_pos)
 		obj:get_luaentity()._old_visual_size = nil
 	end
 	if change_pos then
-		 obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.2, 0)))
+		obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.2, 0)))
 	end
+	obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.5, 0)))
+	minetest.after(0.01, function(obj, change_pos)
+		obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.5, 0)))
+	end, obj, change_pos)
 end
 
 --
@@ -118,11 +120,15 @@ local boat = {
 	pointable = true,
 	-- Warning: Do not change the position of the collisionbox top surface,
 	-- lowering it causes the boat to fall through the world if underwater
-	collisionbox = {-0.5, -0.35, -0.5, 0.5, 0.3, 0.5},
+	-- collisionbox = {-0.5, -0.35, -0.5, 0.5, 0.3, 0.5},
+	collisionbox = {-0.6, -0.2, -1.6, 0.6, 0.3, 0.6},
 	selectionbox = {-0.7, -0.35, -0.7, 0.7, 0.3, 0.7},
 	visual = "mesh",
 	mesh = "sum_airship_boat.b3d",
-	textures = {"sum_airship_texture_oak_boat.png", "sum_airship_texture_oak_boat.png", "sum_airship_texture_oak_boat.png", "sum_airship_texture_oak_boat.png", "sum_airship_texture_oak_boat.png"},
+	textures = {"sum_airship_texture_oak_boat.png"},
+	animations = {
+		idle = {x=  0, y= 7},
+	},
 	visual_size = boat_visual_size,
 	hp_max = boat_max_hp,
 	damage_texture_modifier = "^[colorize:white:0",
@@ -150,6 +156,7 @@ end
 
 function boat.on_activate(self, staticdata, dtime_s)
 	self.object:set_armor_groups({fleshy = 100})
+	self.object:set_animation({x = 0, y = 7}, 25)
 	local data = minetest.deserialize(staticdata)
 	if type(data) == "table" then
 		self._v = data.v
@@ -341,7 +348,7 @@ function boat.on_step(self, dtime, moveresult)
   end
 
   local v = self.object:get_velocity()
-  v = vector.multiply(v, 0.97)
+  v = vector.multiply(v, 0.98)
   self.object:set_velocity(v)
 end
 
