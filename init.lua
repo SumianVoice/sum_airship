@@ -8,6 +8,41 @@ local boat_y_offset_ground = boat_y_offset + 0.6
 local boat_side_offset = 1.001
 local boat_max_hp = 4
 
+
+minetest.register_craftitem("sum_airship:canvas_roll", {
+	description = S("Canvas Roll"),
+	_doc_items_longdesc = S("Used in crafting airships."),
+	inventory_image = "sum_airship_canvas.png",
+	stack_max = 64,
+	groups = { craftitem=1 },
+})
+minetest.register_craftitem("sum_airship:hull", {
+	description = S("Airship Hull"),
+	_doc_items_longdesc = S("Used in crafting airships."),
+	inventory_image = "sum_airship_hull.png",
+	stack_max = 1,
+	groups = { craftitem=1 },
+})
+
+if true then
+	local b = "mcl_boats:boat"
+	local w = "mcl_wool:white"
+	minetest.register_craft({
+		output = "sum_airship:canvas_roll",
+		recipe = {
+			{w, w, w},
+			{w, w, w},
+			{w, w, w},
+		},
+	})
+	minetest.register_craft({
+		output = "sum_airship:hull",
+		recipe = {
+			{b, b, b},
+		},
+	})
+end
+
 local function is_group(pos, group)
 	local nn = minetest.get_node(pos).name
 	return minetest.get_item_group(nn, group) ~= 0
@@ -156,7 +191,7 @@ end
 
 function boat.on_activate(self, staticdata, dtime_s)
 	self.object:set_armor_groups({fleshy = 100})
-	self.object:set_animation({x = 0, y = 7}, 25)
+	self.object:set_animation({x = 0, y = 80}, 25)
 	local data = minetest.deserialize(staticdata)
 	if type(data) == "table" then
 		self._v = data.v
@@ -355,8 +390,8 @@ end
 -- Register one entity for all boat types
 minetest.register_entity("sum_airship:boat", boat)
 
-local boat_ids = { "boat" }
-local names = { S("Oak Boat") }
+local boat_ids = { "main" }
+local names = { S("Oak Airship") }
 local craftstuffs = {}
 if minetest.get_modpath("mcl_core") then
 	craftstuffs = { "mcl_core:wood" }
@@ -371,11 +406,11 @@ for b=1, #boat_ids do
 	-- Only create one help entry for all boats
 	if b == 1 then
 		help = true
-		longdesc = S("Boats are used to travel on the surface of water.")
-		usagehelp = S("Rightclick on a water source to place the boat. Rightclick the boat to enter it. Use [Left] and [Right] to steer, [Forwards] to speed up and [Backwards] to slow down or move backwards. Use [Sneak] to leave the boat, punch the boat to make it drop as an item.")
-		helpname = S("Boat")
+		longdesc = S("Airship are used to travel in the air and stuff.")
+		usagehelp = S("thing")
+		helpname = S("Airship")
 	end
-	tt_help = S("Water vehicle")
+	tt_help = S("Air vehicle")
 
 	minetest.register_craftitem(itemstring, {
 		description = names[b],
@@ -434,11 +469,16 @@ for b=1, #boat_ids do
 	})
 
 	local c = craftstuffs[b]
+	local cvs = "sum_airship:canvas_roll"
+	local sng = "mcl_mobitems:string"
+	local iro = "mcl_core:iron_ingot"
+	local hul = "sum_airship:hull"
 	minetest.register_craft({
 		output = itemstring,
 		recipe = {
-			{c, "", c},
-			{c, c, c},
+			{cvs, cvs, cvs},
+			{sng, iro, sng},
+			{sng, hul, sng},
 		},
 	})
 end
