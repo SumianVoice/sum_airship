@@ -383,7 +383,9 @@ function boat.on_step(self, dtime, moveresult)
   end
 
   local v = self.object:get_velocity()
-  v = vector.multiply(v, 0.98)
+  v.x = v.x * 0.97
+  v.z = v.z * 0.97
+	v.y = v.y * 0.97
   self.object:set_velocity(v)
 end
 
