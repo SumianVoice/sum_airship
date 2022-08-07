@@ -23,10 +23,17 @@ minetest.register_craftitem("sum_airship:hull", {
 	stack_max = 1,
 	groups = { craftitem=1 },
 })
-
 if true then
-	local b = "mcl_boats:boat"
-	local w = "mcl_wool:white"
+	local w = "default:paper"
+	local b = "group:wood"
+	local m = "default:steel_ingot"
+	if minetest.get_modpath("mcl_boats")
+	and minetest.get_modpath("mcl_wool")
+	and minetest.get_modpath("mcl_core") then
+		w = "mcl_wool:white"
+		b = "mcl_boats:boat"
+		m = "mcl_core:iron_ingot"
+	end
 	minetest.register_craft({
 		output = "sum_airship:canvas_roll",
 		recipe = {
@@ -39,6 +46,7 @@ if true then
 		output = "sum_airship:hull",
 		recipe = {
 			{b, b, b},
+			{m, m, m},
 		},
 	})
 end
@@ -94,6 +102,8 @@ local function set_double_attach(boat)
 		{x = 0, y = 0.42, z = -2.2}, {x = 0, y = 0, z = 0})
 end
 
+local mcl = minetest.get_modpath("mcl_player")
+
 local function attach_object(self, obj)
 	if self._driver then
 		if self._driver:is_player() then
@@ -111,18 +121,16 @@ local function attach_object(self, obj)
 	local visual_size = get_visual_size(obj)
 	local yaw = self.object:get_yaw()
 	obj:set_properties({visual_size = vector.divide(visual_size, boat_visual_size)})
-
 	if obj:is_player() then
 		local name = obj:get_player_name()
-		mcl_player.player_attached[name] = true
+		if mcl then mcl_player.player_attached[name] = true end
 		minetest.after(0.2, function(name)
 			local player = minetest.get_player_by_name(name)
-			if player then
+			if player and mcl then
 				mcl_player.player_set_animation(player, "sit" , 30)
 			end
 		end, name)
 		obj:set_look_horizontal(yaw)
-		mcl_title.set(obj, "actionbar", {text=S("Sneak to dismount"), color="white", stay=60})
 	else
 		obj:get_luaentity()._old_visual_size = visual_size
 	end
@@ -131,11 +139,12 @@ end
 local function detach_object(obj, change_pos)
 	obj:set_detach()
 	obj:set_properties({visual_size = get_visual_size(obj)})
-	if obj:is_player() then
+	if obj:is_player() and mcl then
 		mcl_player.player_attached[obj:get_player_name()] = false
 		mcl_player.player_set_animation(obj, "stand" , 30)
 	else
-		obj:get_luaentity()._old_visual_size = nil
+		local luaent = obj:get_luaentity()
+		if luaent then luaent._old_visual_size = nil end
 	end
 	if change_pos then
 		obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.2, 0)))
@@ -215,7 +224,8 @@ function boat.get_staticdata(self)
 end
 
 function boat.on_death(self, killer)
-	mcl_burning.extinguish(self.object)
+	if minetest.get_modpath("mcl_burning") then
+		mcl_burning.extinguish(self.object) end
 
 	if killer and killer:is_player() and minetest.is_creative_enabled(killer:get_player_name()) then
 		local inv = killer:get_inventory()
@@ -242,7 +252,8 @@ function boat.on_punch(self, puncher, time_from_last_punch, tool_capabilities, d
 end
 
 function boat.on_step(self, dtime, moveresult)
-	mcl_burning.tick(self.object, dtime, self)
+	if minetest.get_modpath("mcl_burning") then
+		mcl_burning.tick(self.object, dtime, self) end
 
 	self._v = get_v(self.object:get_velocity()) * get_sign(self._v)
 	local v_factor = 1
@@ -258,7 +269,7 @@ function boat.on_step(self, dtime, moveresult)
 	local regen_timer = self._regen_timer + dtime
 	if hp >= boat_max_hp then
 		regen_timer = 0
-	elseif regen_timer >= 0.5 then
+	elseif regen_timer >= 3 then
 		hp = hp + 1
 		self.object:set_hp(hp)
 		regen_timer = 0
@@ -360,7 +371,7 @@ function boat.on_step(self, dtime, moveresult)
 
 	local yaw = self.object:get_yaw()
   local yaw_dir = minetest.yaw_to_dir(yaw)
-	local anim = (boat_max_hp - hp - regen_timer * 2) / boat_max_hp * math.pi / 4
+	local anim = (boat_max_hp - hp - regen_timer / 3) / boat_max_hp * math.pi / 8
 
 	self.object:set_rotation(vector.new(anim, yaw, anim))
 	-- self.object:set_velocity(new_velo)
@@ -394,10 +405,6 @@ minetest.register_entity("sum_airship:boat", boat)
 
 local boat_ids = { "main" }
 local names = { S("Oak Airship") }
-local craftstuffs = {}
-if minetest.get_modpath("mcl_core") then
-	craftstuffs = { "mcl_core:wood" }
-end
 local images = { "oak" }
 
 for b=1, #boat_ids do
@@ -470,11 +477,15 @@ for b=1, #boat_ids do
 		end,
 	})
 
-	local c = craftstuffs[b]
 	local cvs = "sum_airship:canvas_roll"
-	local sng = "mcl_mobitems:string"
-	local iro = "mcl_core:iron_ingot"
 	local hul = "sum_airship:hull"
+	local sng = "default:paper"
+	local iro = "default:steel_ingot"
+	if minetest.get_modpath("mcl_mobitems")
+	and minetest.get_modpath("mcl_core") then
+		sng = "mcl_mobitems:string"
+		iro = "mcl_core:iron_ingot"
+	end
 	minetest.register_craft({
 		output = itemstring,
 		recipe = {
