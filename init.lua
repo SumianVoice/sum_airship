@@ -1,5 +1,9 @@
 local S = minetest.get_translator(minetest.get_current_modname())
 
+-- globalscope var for the whole mod
+sum_airship = {
+	i = {},
+}
 
 local boat_visual_size = {x = 1, y = 1, z = 1}
 local paddling_speed = 22
@@ -8,48 +12,17 @@ local boat_y_offset_ground = boat_y_offset + 0.6
 local boat_side_offset = 1.001
 local boat_max_hp = 4
 
-
-minetest.register_craftitem("sum_airship:canvas_roll", {
-	description = S("Canvas Roll"),
-	_doc_items_longdesc = S("Used in crafting airships."),
-	inventory_image = "sum_airship_canvas.png",
-	stack_max = 64,
-	groups = { craftitem=1 },
-})
-minetest.register_craftitem("sum_airship:hull", {
-	description = S("Airship Hull"),
-	_doc_items_longdesc = S("Used in crafting airships."),
-	inventory_image = "sum_airship_hull.png",
-	stack_max = 1,
-	groups = { craftitem=1 },
-})
-if true then
-	local w = "default:paper"
-	local b = "group:wood"
-	local m = "default:steel_ingot"
-	if minetest.get_modpath("mcl_boats")
-	and minetest.get_modpath("mcl_wool")
-	and minetest.get_modpath("mcl_core") then
-		w = "mcl_wool:white"
-		b = "mcl_boats:boat"
-		m = "mcl_core:iron_ingot"
-	end
-	minetest.register_craft({
-		output = "sum_airship:canvas_roll",
-		recipe = {
-			{w, w, w},
-			{w, w, w},
-			{w, w, w},
-		},
-	})
-	minetest.register_craft({
-		output = "sum_airship:hull",
-		recipe = {
-			{b, b, b},
-			{m, m, m},
-		},
-	})
+-- make sure silly people don't try to run it without the needed dependencies.
+if not (minetest.get_modpath("mcl_boats")
+and minetest.get_modpath("mcl_wool")
+and minetest.get_modpath("mcl_core"))
+and not minetest.get_modpath("default") then
+	error("\n\n===\nYou need either mcl2 or minetest_game to run sum_airship mod. \n" ..
+	"These are listed in the optional dependencies for cross compatibility, " ..
+	"but at least one is needed.\n===\n")
 end
+
+dofile(minetest.get_modpath("sum_airship") .. DIR_DELIM .. "crafts.lua")
 
 local function is_group(pos, group)
 	local nn = minetest.get_node(pos).name
@@ -102,7 +75,7 @@ local function set_double_attach(boat)
 		{x = 0, y = 0.42, z = -2.2}, {x = 0, y = 0, z = 0})
 end
 
-local mcl = minetest.get_modpath("mcl_player")
+local mcl = minetest.get_modpath("mcl_player") ~= nil
 
 local function attach_object(self, obj)
 	if self._driver then
@@ -149,9 +122,9 @@ local function detach_object(obj, change_pos)
 	if change_pos then
 		obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.2, 0)))
 	end
-	obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.5, 0)))
-	minetest.after(0.01, function(obj, change_pos)
-		obj:set_pos(vector.add(obj:get_pos(), vector.new(0, 0.5, 0)))
+	obj:set_pos(vector.offset(obj:get_pos(), 0, 0.7, 0))
+	minetest.after(0.1, function(obj, change_pos)
+		obj:set_pos(vector.offset(obj:get_pos(), 0, 0.7, 0))
 	end, obj, change_pos)
 end
 
@@ -162,8 +135,6 @@ end
 local boat = {
 	physical = true,
 	pointable = true,
-	-- Warning: Do not change the position of the collisionbox top surface,
-	-- lowering it causes the boat to fall through the world if underwater
 	-- collisionbox = {-0.5, -0.35, -0.5, 0.5, 0.3, 0.5},
 	collisionbox = {-0.6, -0.2, -1.6, 0.6, 0.3, 0.6},
 	selectionbox = {-0.7, -0.35, -0.7, 0.7, 0.3, 0.7},
@@ -259,11 +230,8 @@ function boat.on_step(self, dtime, moveresult)
 	local v_factor = 1
 	local v_slowdown = 0.1
 	local p = self.object:get_pos()
-	local on_water = true
-	local on_ice = false
-	local in_water = false
-	local in_river_water = false
-	local waterp = {x=p.x, y=p.y-boat_y_offset - 0.1, z=p.z}
+	local on_water = false
+	local in_water = minetest.get_item_group(minetest.get_node(p).name, "liquid") ~= 0
 
 	local hp = self.object:get_hp()
 	local regen_timer = self._regen_timer + dtime
@@ -319,30 +287,31 @@ function boat.on_step(self, dtime, moveresult)
 			return
 		end
 		local yaw = self.object:get_yaw()
+		if ctrl and not in_water then
+			if ctrl.up then
+				-- Forwards
+				forward = forward + 1
+	    elseif ctrl.down then
+	      forward = forward - 1
+	    end
+			if ctrl.aux1 then
+				climb = climb - 1
+	    elseif ctrl.jump then
+	      climb = climb + 1
+	    end
 
-		if ctrl and ctrl.up then
-			-- Forwards
-			forward = forward + 1
-    elseif ctrl and ctrl.down then
-      forward = forward - 1
-    end
-		if ctrl and ctrl.aux1 then
-			climb = climb - 1
-    elseif ctrl and ctrl.jump then
-      climb = climb + 1
-    end
-
-		if ctrl and ctrl.left then
-			if self._v < 0 then
-				self.object:set_yaw(yaw - (1 + dtime) * 0.03 * v_factor)
-			else
-				self.object:set_yaw(yaw + (1 + dtime) * 0.03 * v_factor)
-			end
-		elseif ctrl and ctrl.right then
-			if self._v < 0 then
-				self.object:set_yaw(yaw + (1 + dtime) * 0.03 * v_factor)
-			else
-				self.object:set_yaw(yaw - (1 + dtime) * 0.03 * v_factor)
+			if ctrl.left then
+				if self._v < 0 then
+					self.object:set_yaw(yaw - (1 + dtime) * 0.03 * v_factor)
+				else
+					self.object:set_yaw(yaw + (1 + dtime) * 0.03 * v_factor)
+				end
+			elseif ctrl.right then
+				if self._v < 0 then
+					self.object:set_yaw(yaw + (1 + dtime) * 0.03 * v_factor)
+				else
+					self.object:set_yaw(yaw - (1 + dtime) * 0.03 * v_factor)
+				end
 			end
 		end
 	end
@@ -356,41 +325,24 @@ function boat.on_step(self, dtime, moveresult)
 		-- end
 	local s = get_sign(self._v)
 
-	local new_velo
-	local new_acce
-  new_acce = {x = 0, y = 0, z = 0}
-  new_velo = get_velocity(self._v, self.object:get_yaw(), self.object:get_velocity().y)
-  self.object:set_pos(self.object:get_pos())
-	-- Terminal velocity: 8 m/s per axis of travel
-	local terminal_velocity = 50
-	for _,axis in pairs({"z","y","x"}) do
-		if math.abs(new_velo[axis]) > terminal_velocity then
-			new_velo[axis] = terminal_velocity * get_sign(new_velo[axis])
-		end
-	end
-
 	local yaw = self.object:get_yaw()
   local yaw_dir = minetest.yaw_to_dir(yaw)
 	local anim = (boat_max_hp - hp - regen_timer / 3) / boat_max_hp * math.pi / 8
 
 	self.object:set_rotation(vector.new(anim, yaw, anim))
-	-- self.object:set_velocity(new_velo)
-	-- self.object:set_acceleration(new_acce)
 
   local vel = nil
-  if self._driver then
-    if self._driver:get_look_dir() and false then
-      dir = self._driver:get_look_dir()
-    else
-      dir = vector.multiply(yaw_dir, forward)
-      dir.y = climb
-    end
+  if self._driver and not in_water then
+    dir = vector.multiply(yaw_dir, forward)
+    dir.y = climb
     vel = vector.multiply(dir, 20)
     if vel then
     	self.object:set_acceleration(vel)
     end
-  else
-    self.object:set_acceleration({x=0,y=-5,z=0})
+  elseif not in_water then
+    self.object:set_acceleration({x=0,y=0,z=0})
+	else
+		self.object:set_acceleration({x=0,y=5,z=0})
   end
 
   local v = self.object:get_velocity()
@@ -450,8 +402,6 @@ for b=1, #boat_ids do
 
 			if math.abs(dir.x) > 0.9 or math.abs(dir.z) > 0.9 then
 				pos = vector.add(pos, vector.multiply(dir, boat_side_offset))
-			-- elseif true then
-			-- 	pos = vector.add(pos, vector.multiply(dir, boat_y_offset))
 			else
 				pos = vector.add(pos, vector.multiply(dir, boat_y_offset_ground))
 			end
