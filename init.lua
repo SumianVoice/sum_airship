@@ -349,7 +349,7 @@ function boat.on_step(self, dtime, moveresult)
   end
 
 	if has_air_currents and (self._driver or not is_on_floor) then
-		vel = sum_air_currents.apply_wind(vel)
+		vel = sum_air_currents.apply_wind(vel, p)
 	end
 
   local v = self.object:get_velocity()
