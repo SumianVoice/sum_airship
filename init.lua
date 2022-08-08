@@ -286,9 +286,9 @@ function boat.on_step(self, dtime, moveresult)
 			return
 		end
 		local yaw = self.object:get_yaw()
-		if mcl and mcl_player.player_get_animation(self._driver).animation ~= "sit" then
-			mcl_player.player_set_animation(self._driver, "sit" , 30)
-		end
+		-- if mcl and mcl_player.player_get_animation(self._driver).animation ~= "sit" then
+		-- 	mcl_player.player_set_animation(self._driver, "sit" , 30)
+		-- end
 		if ctrl and not in_water then
 			if ctrl.up then
 				-- Forwards
