@@ -136,13 +136,13 @@ local boat = {
 	physical = true,
 	pointable = true,
 	-- collisionbox = {-0.5, -0.35, -0.5, 0.5, 0.3, 0.5},
-	collisionbox = {-0.6, -0.2, -1.6, 0.6, 0.3, 0.6},
+	collisionbox = {-0.6, -0.2, -0.6, 0.6, 0.3, 0.6},
 	selectionbox = {-0.7, -0.35, -0.7, 0.7, 0.3, 0.7},
 	visual = "mesh",
 	mesh = "sum_airship_boat.b3d",
 	textures = {"sum_airship_texture_oak_boat.png"},
 	animations = {
-		idle = {x=  0, y= 7},
+		idle = {x=  0, y= 80},
 	},
 	visual_size = boat_visual_size,
 	hp_max = boat_max_hp,
@@ -350,6 +350,7 @@ function boat.on_step(self, dtime, moveresult)
   v.z = v.z * 0.97
 	v.y = v.y * 0.97
   self.object:set_velocity(v)
+
 end
 
 -- Register one entity for all boat types
