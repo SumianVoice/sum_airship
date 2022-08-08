@@ -65,14 +65,14 @@ end
 
 local function set_attach(boat)
 	boat._driver:set_attach(boat.object, "",
-		{x = 0, y = 0.42, z = -1}, {x = 0, y = 0, z = 0})
+		{x = 0, y = 0.42, z = -2}, {x = 0, y = 0, z = 0})
 end
 
 local function set_double_attach(boat)
 	boat._driver:set_attach(boat.object, "",
-		{x = 0, y = 0.42, z = 0.8}, {x = 0, y = 0, z = 0})
+		{x = 0, y = 0.8, z = -2}, {x = 0, y = 0, z = 0})
 	boat._passenger:set_attach(boat.object, "",
-		{x = 0, y = 0.42, z = -2.2}, {x = 0, y = 0, z = 0})
+		{x = 0, y = 0.8, z = -3.2}, {x = 0, y = 0, z = 0})
 end
 
 local mcl = minetest.get_modpath("mcl_player") ~= nil
@@ -97,12 +97,11 @@ local function attach_object(self, obj)
 	if obj:is_player() then
 		local name = obj:get_player_name()
 		if mcl then mcl_player.player_attached[name] = true end
-		minetest.after(0.2, function(name)
-			local player = minetest.get_player_by_name(name)
+		minetest.after(0.2, function(player)
 			if player and mcl then
 				mcl_player.player_set_animation(player, "sit" , 30)
 			end
-		end, name)
+		end, obj)
 		obj:set_look_horizontal(yaw)
 	else
 		obj:get_luaentity()._old_visual_size = visual_size
@@ -142,7 +141,7 @@ local boat = {
 	mesh = "sum_airship_boat.b3d",
 	textures = {"sum_airship_texture_oak_boat.png"},
 	animations = {
-		idle = {x=  0, y= 80},
+		idle = {x=  10, y= 90},
 	},
 	visual_size = boat_visual_size,
 	hp_max = boat_max_hp,
@@ -171,7 +170,7 @@ end
 
 function boat.on_activate(self, staticdata, dtime_s)
 	self.object:set_armor_groups({fleshy = 100})
-	self.object:set_animation({x = 0, y = 80}, 25)
+	self.object:set_animation(self.animations.idle, 25)
 	local data = minetest.deserialize(staticdata)
 	if type(data) == "table" then
 		self._v = data.v
@@ -287,6 +286,9 @@ function boat.on_step(self, dtime, moveresult)
 			return
 		end
 		local yaw = self.object:get_yaw()
+		if mcl and mcl_player.player_get_animation(self._driver).animation ~= "sit" then
+			mcl_player.player_set_animation(self._driver, "sit" , 30)
+		end
 		if ctrl and not in_water then
 			if ctrl.up then
 				-- Forwards
@@ -340,7 +342,7 @@ function boat.on_step(self, dtime, moveresult)
     	self.object:set_acceleration(vel)
     end
   elseif not in_water then
-    self.object:set_acceleration({x=0,y=0,z=0})
+    self.object:set_acceleration({x=0,y=-0.6,z=0})
 	else
 		self.object:set_acceleration({x=0,y=5,z=0})
   end
@@ -351,6 +353,23 @@ function boat.on_step(self, dtime, moveresult)
 	v.y = v.y * 0.97
   self.object:set_velocity(v)
 
+	-- I hate trig
+	local chimney_dist = -1.0
+	local chimney_pos = {
+		x=p.x + (chimney_dist * math.sin(-yaw+0.13)),
+		y=p.y+0.9,
+		z=p.z + (chimney_dist * math.cos(-yaw+0.13))}
+
+	local spread = 0.06
+	minetest.add_particle({
+		pos = vector.offset(chimney_pos, math.random(-1, 1)*spread, 0, math.random(-1, 1)*spread),
+		velocity = {x=0, y=math.random(0.2,0.7), z=0},
+		expirationtime = math.random(0.5, 2),
+		size = math.random(0.1, 4),
+		collisiondetection = false,
+		vertical = false,
+		texture = "sum_airship_smoke.png",
+	})
 end
 
 -- Register one entity for all boat types
