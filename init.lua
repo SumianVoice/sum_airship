@@ -12,6 +12,7 @@ local boat_y_offset_ground = boat_y_offset + 0.6
 local boat_side_offset = 1.001
 local boat_max_hp = 4
 
+
 -- make sure silly people don't try to run it without the needed dependencies.
 if not (minetest.get_modpath("mcl_boats")
 and minetest.get_modpath("mcl_wool")
@@ -21,6 +22,9 @@ and not minetest.get_modpath("default") then
 	"These are listed in the optional dependencies for cross compatibility, " ..
 	"but at least one is needed.\n===\n")
 end
+
+local has_air_currents = minetest.get_modpath("sum_air_currents") ~= nil
+local mcl = minetest.get_modpath("mcl_player") ~= nil
 
 dofile(minetest.get_modpath("sum_airship") .. DIR_DELIM .. "crafts.lua")
 
@@ -74,8 +78,6 @@ local function set_double_attach(boat)
 	boat._passenger:set_attach(boat.object, "",
 		{x = 0, y = 0.8, z = -3.2}, {x = 0, y = 0, z = 0})
 end
-
-local mcl = minetest.get_modpath("mcl_player") ~= nil
 
 local function attach_object(self, obj)
 	if self._driver then
@@ -231,6 +233,8 @@ function boat.on_step(self, dtime, moveresult)
 	local p = self.object:get_pos()
 	local on_water = false
 	local in_water = minetest.get_item_group(minetest.get_node(p).name, "liquid") ~= 0
+	local node_below = minetest.get_node(vector.offset(p, 0, -0.3, 0)).name
+	local is_on_floor = minetest.registered_nodes[node_below].walkable
 
 	local hp = self.object:get_hp()
 	local regen_timer = self._regen_timer + dtime
@@ -333,19 +337,22 @@ function boat.on_step(self, dtime, moveresult)
 
 	self.object:set_rotation(vector.new(anim, yaw, anim))
 
-  local vel = nil
+  local vel = vector.new(0, 0, 0)
   if self._driver and not in_water then
     dir = vector.multiply(yaw_dir, forward)
     dir.y = climb
     vel = vector.multiply(dir, 20)
-    if vel then
-    	self.object:set_acceleration(vel)
-    end
-  elseif not in_water then
-    self.object:set_acceleration({x=0,y=-0.6,z=0})
+  elseif in_water then
+		vel = {x=0, y=5, z=0}
 	else
-		self.object:set_acceleration({x=0,y=5,z=0})
+		vel = {x=0, y=-0.6, z=0}
   end
+
+	if has_air_currents and not is_on_floor then
+		vel = sum_air_currents.apply_wind(vel)
+	end
+
+	self.object:set_acceleration(vel)
 
   local v = self.object:get_velocity()
   v.x = v.x * 0.97
