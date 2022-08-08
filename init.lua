@@ -6,11 +6,11 @@ sum_airship = {
 }
 
 local boat_visual_size = {x = 1, y = 1, z = 1}
-local paddling_speed = 22
 local boat_y_offset = 0.35
 local boat_y_offset_ground = boat_y_offset + 0.6
 local boat_side_offset = 1.001
 local boat_max_hp = 4
+local speed_mult = 4
 
 
 -- make sure silly people don't try to run it without the needed dependencies.
@@ -341,24 +341,33 @@ function boat.on_step(self, dtime, moveresult)
   if self._driver and not in_water then
     dir = vector.multiply(yaw_dir, forward)
     dir.y = climb
-    vel = vector.multiply(dir, 20)
+    vel = vector.multiply(dir, speed_mult)
   elseif in_water then
 		vel = {x=0, y=5, z=0}
 	else
 		vel = {x=0, y=-0.6, z=0}
   end
 
-	if has_air_currents and not is_on_floor then
+	if has_air_currents and (self._driver or not is_on_floor) then
 		vel = sum_air_currents.apply_wind(vel)
 	end
 
-	self.object:set_acceleration(vel)
-
   local v = self.object:get_velocity()
-  v.x = v.x * 0.97
-  v.z = v.z * 0.97
+	local slowdown = 0.983
+	if forward == 0 then
+		slowdown = 0.97
+	end
+  v.x = v.x * slowdown
+  v.z = v.z * slowdown
 	v.y = v.y * 0.97
-  self.object:set_velocity(v)
+	if is_on_floor and not self._driver then
+		vel = vector.new(0, 0, 0)
+		self.object:set_velocity(vel)
+	else
+	  self.object:set_velocity(v)
+	end
+
+	self.object:set_acceleration(vel)
 
 	-- I hate trig
 	local chimney_dist = -1.0
@@ -370,7 +379,7 @@ function boat.on_step(self, dtime, moveresult)
 	local spread = 0.06
 	minetest.add_particle({
 		pos = vector.offset(chimney_pos, math.random(-1, 1)*spread, 0, math.random(-1, 1)*spread),
-		velocity = {x=0, y=math.random(0.2,0.7), z=0},
+		velocity = {x=0, y=math.random(0.2*100,0.7*100)/100, z=0},
 		expirationtime = math.random(0.5, 2),
 		size = math.random(0.1, 4),
 		collisiondetection = false,
